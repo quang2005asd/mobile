@@ -57,7 +57,7 @@ class User {
       password: map['password'] as String,
       gender: map['gender'] as String,
       dateOfBirth: DateTime.parse(map['dateOfBirth'] as String),
-      height: map['height'] as double,
+      height: (map['height'] as num).toDouble(),
       avatar: map['avatar'] as String?,
       createdAt: DateTime.parse(map['createdAt'] as String),
       updatedAt: DateTime.parse(map['updatedAt'] as String),

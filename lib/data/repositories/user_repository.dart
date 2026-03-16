@@ -7,7 +7,7 @@ import '../../core/database/database_helper.dart';
 class UserRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   static const String _webUsersKey = 'web_users';
-  static int _webIdCounter = 1;
+  static const String _webIdCounterKey = 'web_id_counter';
 
   // Web storage helpers
   Future<List<User>> _getWebUsers() async {
@@ -25,12 +25,20 @@ class UserRepository {
     await prefs.setString(_webUsersKey, usersJson);
   }
 
+  Future<int> _getNextWebId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentId = prefs.getInt(_webIdCounterKey) ?? 1;
+    await prefs.setInt(_webIdCounterKey, currentId + 1);
+    return currentId;
+  }
+
   // Create user
   Future<int> createUser(User user) async {
     if (kIsWeb) {
       // Web implementation using SharedPreferences
       final users = await _getWebUsers();
-      final newUser = user.copyWith(id: _webIdCounter++);
+      final newId = await _getNextWebId();
+      final newUser = user.copyWith(id: newId);
       users.add(newUser);
       await _saveWebUsers(users);
       return newUser.id!;
@@ -43,32 +51,50 @@ class UserRepository {
 
   // Get user by email
   Future<User?> getUserByEmail(String email) async {
-    final db = await _dbHelper.database;
-    final maps = await db.query(
-      'users',
-      where: 'email = ?',
-      whereArgs: [email],
-    );
+    if (kIsWeb) {
+      final users = await _getWebUsers();
+      try {
+        return users.firstWhere((u) => u.email == email);
+      } catch (e) {
+        return null;
+      }
+    } else {
+      final db = await _dbHelper.database;
+      final maps = await db.query(
+        'users',
+        where: 'email = ?',
+        whereArgs: [email],
+      );
 
-    if (maps.isNotEmpty) {
-      return User.fromMap(maps.first);
+      if (maps.isNotEmpty) {
+        return User.fromMap(maps.first);
+      }
+      return null;
     }
-    return null;
   }
 
   // Get user by id
   Future<User?> getUserById(int id) async {
-    final db = await _dbHelper.database;
-    final maps = await db.query(
-      'users',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    if (kIsWeb) {
+      final users = await _getWebUsers();
+      try {
+        return users.firstWhere((u) => u.id == id);
+      } catch (e) {
+        return null;
+      }
+    } else {
+      final db = await _dbHelper.database;
+      final maps = await db.query(
+        'users',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
 
-    if (maps.isNotEmpty) {
-      return User.fromMap(maps.first);
+      if (maps.isNotEmpty) {
+        return User.fromMap(maps.first);
+      }
+      return null;
     }
-    return null;
   }
 
   // Update user
